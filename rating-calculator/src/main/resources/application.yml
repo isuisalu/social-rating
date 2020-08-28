@@ -1,0 +1,9 @@
+camel:
+  springboot:
+    name: SocialRatingCalculator
+    main-run-controller: true
+rating:
+  port: 8081
+  topic-url: "kafka:rating?brokers=${KAFKA_BROKER_HOST}:${KAFKA_BROKER_PORT}&groupId=A&autoOffsetReset=earliest"
+  redis-host: "${REDIS_HOST}"
+  seed: 0.1

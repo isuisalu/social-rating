@@ -1,0 +1,63 @@
+version: '3.2'
+
+services:
+  zoo1:
+    image: zookeeper:3.4.9
+    hostname: zoo1
+    ports:
+      - "2181:2181"
+    environment:
+      ZOO_MY_ID: 1
+      ZOO_PORT: 2181
+      ZOO_SERVERS: server.1=zoo1:2888:3888
+    volumes:
+      - ./zk-single-kafka-single/zoo1/data:/data
+      - ./zk-single-kafka-single/zoo1/datalog:/datalog
+
+  kafka1:
+    image: confluentinc/cp-kafka:5.5.1
+    hostname: kafka1
+    ports:
+      - "9092:9092"
+    expose:
+      - "9093"
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zoo1:2181
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka1:9093,OUTSIDE://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_LISTENERS: INSIDE://kafka1:9093,OUTSIDE://0.0.0.0:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    volumes:
+      - ./zk-single-kafka-single/kafka1/data:/var/lib/kafka/data
+    depends_on:
+      - zoo1
+
+  redis:
+    image: 'docker.io/bitnami/redis:6.0-debian-10'
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+      - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
+    ports:
+      - '6379:6379'
+    volumes:
+      - ./redis-data:/var/lib/redis
+
+  data-collector:
+    image: 'rating/data-collector'
+    environment:
+      - KAFKA_BROKER_HOST=kafka1
+      - KAFKA_BROKER_PORT=9093
+    ports:
+      - '8080:8080'
+
+  rating-calculator:
+    image: 'rating/rating-calculator'
+    environment:
+      - KAFKA_BROKER_HOST=kafka1
+      - KAFKA_BROKER_PORT=9093
+      - REDIS_HOST=redis
+    ports:
+      - '8081:8081'
+
